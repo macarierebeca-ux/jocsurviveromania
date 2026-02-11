@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<title>Survive România</title>
+
+<style>
+body{
+  font-family: Arial;
+  background:#111;
+  color:#eee;
+  max-width:700px;
+  margin:auto;
+  padding:20px;
+}
+button{
+  display:block;
+  width:100%;
+  margin:8px 0;
+  padding:12px;
+  font-size:16px;
+  cursor:pointer;
+  background:#1b1b1b;
+  color:#00ff88;
+  border:1px solid #00ff88;
+}
+input{
+  width:100%;
+  padding:10px;
+  font-size:16px;
+  margin-bottom:10px;
+}
+.stats{
+  font-weight:bold;
+  margin-bottom:10px;
+}
+.story{
+  font-style:italic;
+  color:#bbb;
+  margin-bottom:15px;
+}
+</style>
+</head>
+
+<body>
+
+<h2 id="title"></h2>
+<div class="stats" id="stats"></div>
+<div class="story" id="story"></div>
+<div id="text"></div>
+<div id="choices"></div>
+
+<script>
+let level = 0;
+let lives = 3;
+let xp = 0;
+let questionIndex = 0;
+
+let player = {
+  country:"",
+  gender:"",
+  age:""
+};
+
+function saveGame(){
+localStorage.setItem("romania_survival_save",
+JSON.stringify({level,lives,xp,questionIndex,player}));
+}
+
+function loadGame(){
+let save = localStorage.getItem("romania_survival_save");
+if(save){
+let data = JSON.parse(save);
+level=data.level;
+lives=data.lives;
+xp=data.xp;
+questionIndex=data.questionIndex;
+player=data.player;
+}
+}
+
+const levels = [
+
+/* ---------------- ZIUA 1 ---------------- */
+
+{
+title:"ZIUA 1 – Cine ești?",
+story:"Te trezești în România. Orașul nu e sigur. Ca să supraviețuiești trebuie să vorbești română.",
+questions:[
+
+{ custom:"country" },
+{ custom:"gender" },
+{ custom:"age" },
+
+{
+text: () => `Eu ___ din ${player.country}.`,
+choices:["este","sunt"],
+correct:1,
+xp:10
+},
+
+{
+text:"Eu ___ elev.",
+choices:["este","sunt"],
+correct:1,
+xp:10
+},
+
+{
+text: () => `Eu ___ ${player.age} ani.`,
+choices:["am","are"],
+correct:0,
+xp:10
+},
+
+{
+text:"Tu ___ obosit.",
+choices:["ești","este"],
+correct:0,
+xp:10
+},
+
+{
+text:"Noi ___ în România.",
+choices:["suntem","este"],
+correct:0,
+xp:15
+}
+]
+},
+
+/* ---------------- ZIUA 2 ---------------- */
+
+{
+title:"ZIUA 2 – Laptop misterios",
+story:"Găsești un laptop vechi de gaming. Ca să pornească trebuie să vorbești română corect.",
+questions:[
+
+{
+text:"În timpul meu liber îmi place să ___ jocuri.",
+choices:["joc","joacă","joci"],
+correct:0,
+xp:15
+},
+
+{
+text:"Alege propoziția corectă:",
+choices:[
+"Îmi place să joc jocuri",
+"Eu place jocuri",
+"Eu îmi place jocuri"
+],
+correct:0,
+xp:15
+},
+
+{
+custom:"game"
+},
+
+{
+text:"Ce culoare este focul?",
+choices:["portocaliu","roz","albastru"],
+correct:0,
+xp:10
+},
+
+{
+custom:"color"
+},
+
+{
+text:"Alege arma corectă:",
+choices:["arma roșie","arma mov","arma verde"],
+correct:0,
+xp:15
+},
+
+{
+text:"Completează: Eu ___ elev gamer.",
+choices:["sunt","este"],
+correct:0,
+xp:20
+}
+]
+}
+
+];
+
+function updateStats(){
+document.getElementById("stats").innerHTML =
+`❤️ Vieți: ${lives} | ⭐ XP: ${xp}`;
+}
+
+function render(){
+saveGame();
+updateStats();
+
+let lvl = levels[level];
+document.getElementById("title").innerText = lvl.title;
+document.getElementById("story").innerText = lvl.story;
+
+let q = lvl.questions[questionIndex];
+let textDiv = document.getElementById("text");
+let choicesDiv = document.getElementById("choices");
+choicesDiv.innerHTML="";
+
+if(q.custom){
+handleCustom(q.custom);
+return;
+}
+
+let questionText = typeof q.text==="function"? q.text():q.text;
+textDiv.innerText = questionText;
+
+q.choices.forEach((choice,i)=>{
+let btn=document.createElement("button");
+btn.innerText=choice;
+btn.onclick=()=>choose(i);
+choicesDiv.appendChild(btn);
+});
+}
+
+function handleCustom(type){
+let textDiv=document.getElementById("text");
+let choicesDiv=document.getElementById("choices");
+choicesDiv.innerHTML="";
+
+if(type==="country") textDiv.innerText="Din ce țară ești?";
+if(type==="gender") textDiv.innerText="Ești băiat sau fată?";
+if(type==="age") textDiv.innerText="Câți ani ai?";
+if(type==="game") textDiv.innerText="Ce jocuri îți plac?";
+if(type==="color") textDiv.innerText="Care este culoarea ta preferată?";
+
+let input=document.createElement("input");
+let btn=document.createElement("button");
+btn.innerText="Confirmă (+10XP)";
+
+btn.onclick=()=>{
+if(!input.value) return;
+
+if(type==="country") player.country=input.value;
+if(type==="gender") player.gender=input.value;
+if(type==="age") player.age=input.value;
+
+xp+=10;
+nextQuestion();
+render();
+};
+
+choicesDiv.appendChild(input);
+choicesDiv.appendChild(btn);
+}
+
+function choose(i){
+let q = levels[level].questions[questionIndex];
+
+if(i===q.correct){
+xp += q.xp || 10;
+nextQuestion();
+}else{
+lives--;
+alert("Greșit! Pierzi o viață.");
+if(lives<=0){
+alert("Ai pierdut toate viețile! Reiei nivelul.");
+lives=3;
+questionIndex=0;
+}
+}
+render();
+}
+
+function nextQuestion(){
+questionIndex++;
+if(questionIndex>=levels[level].questions.length){
+level++;
+if(level>=levels.length){
+document.body.innerHTML =
+`<h1>🎉 AI SUPRAVIEȚUIT</h1>
+<p>XP total: ${xp}</p>
+<p>Mâine continuă aventura...</p>`;
+localStorage.removeItem("romania_survival_save");
+return;
+}
+lives=3;
+questionIndex=0;
+}
+}
+
+loadGame();
+render();
+</script>
+
+</body>
+</html>
